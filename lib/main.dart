@@ -5,11 +5,65 @@ import './screens/category_meals_screen.dart';
 import './screens/meal_detail_screen.dart';
 import './screens/tabs_screen.dart';
 import './screens/filters_screen.dart';
+import './models/meal.dart';
+import './dummy_data.dart';
 
 void main() => runApp(const MyApp());
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  Map<String, bool> _filters = {
+    'gluten': false,
+    'lactose': false,
+    'vegetarian': false,
+    'vegan': false
+  };
+
+  List<Meal> _availableMeals = dummyMeals;
+  List<Meal> _favouriteMeals = [];
+
+  void _setFilters(Map<String, bool> filterData) {
+    setState(() {
+      _filters = filterData;
+
+      _availableMeals = dummyMeals.where((element) {
+        if (_filters['gluten']! && !element.isGlutenFree) {
+          return false;
+        }
+        if (_filters['lactose']! && !element.isLactoseFree) {
+          return false;
+        }
+        if (_filters['vegetarian']! && !element.isVegetarian) {
+          return false;
+        }
+        if (_filters['vegan']! && !element.isVegan) {
+          return false;
+        }
+        return true;
+      }).toList();
+    });
+  }
+
+  void _toggleFavourite(String mealId){
+    final existingIndex = _favouriteMeals.indexWhere((element) => element.id == mealId);
+    if (existingIndex >= 0){
+      setState(() {
+        _favouriteMeals.removeAt(existingIndex);
+      });
+    } else {
+      _favouriteMeals.add(dummyMeals.firstWhere((element) => element.id == mealId));
+    }
+  }
+
+  bool _isMealFavourite(String id){
+    return _favouriteMeals.any((element) => element.id == id);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -40,10 +94,11 @@ class MyApp extends StatelessWidget {
       home: const CategoriesScreen(),
       initialRoute: '/tabs',
       routes: {
-        '/tabs':(context) => const TabsScreen(),
-        CategoryMealsScreen.routeName: (context) => const CategoryMealsScreen(),
-        MealDetailScreen.routeName:(context) => const MealDetailScreen(),
-        FiltersScreen.routeName:(context) => const FiltersScreen()
+        '/tabs': (context) => TabsScreen(_favouriteMeals),
+        CategoryMealsScreen.routeName: (context) =>
+            CategoryMealsScreen(_availableMeals),
+        MealDetailScreen.routeName: (context) => MealDetailScreen(_toggleFavourite, _isMealFavourite),
+        FiltersScreen.routeName: (context) => FiltersScreen(_setFilters, _filters)
       },
 
       // onGenerateRoute: (settings) {
@@ -52,7 +107,8 @@ class MyApp extends StatelessWidget {
       // },
 
       onUnknownRoute: (settings) {
-        return MaterialPageRoute(builder: (context) => const CategoriesScreen());
+        return MaterialPageRoute(
+            builder: (context) => const CategoriesScreen());
       },
       // fallback route
     );
